@@ -1,25 +1,36 @@
-from datetime import datetime, timezone
+from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from app.core.config.database import SessionLocal
 from app.models.health import Health
 from app.modules.health.schema import HealthCreate
 
 
 class HealthService:
-    def __init__(self, db: Session):
-        self.db = db
+    def get_all(self):
+        with SessionLocal() as db:
+            try:
+                stmt = select(Health).order_by(Health.date_time.desc())
+                return list(db.scalars(stmt).all())
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to fetch health records: {str(e)}",
+                )
 
-    def get_all(self) -> list[Health]:
-        stmt = select(Health).order_by(Health.date_time.desc())
-        return list(self.db.scalars(stmt).all())
+    def create(self, data: HealthCreate):
+        with SessionLocal() as db:
+            try:
+                record = Health(**data.model_dump(exclude_none=True))
+                db.add(record)
+                db.commit()
+                db.refresh(record)
+                return record
+            except Exception as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to create health record: {str(e)}",
+                )
 
-    def create(self, data: HealthCreate) -> Health:
-        record_date_time = (
-            data.date_time if data.date_time is not None else datetime.now(timezone.utc)
-        )
-        record = Health(name=data.name, date_time=record_date_time)
-        self.db.add(record)
-        self.db.commit()
-        self.db.refresh(record)
-        return record
 
+health_service = HealthService()

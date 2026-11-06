@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
-from app.config.database.base import Base
+from app.core.config.database import Base
 
 
 class Health(Base):
